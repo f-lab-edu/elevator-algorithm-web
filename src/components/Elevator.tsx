@@ -73,9 +73,10 @@ const ElevatorCursorDisplay = styled.div({
 
 interface ElevatorProps {
   name: string;
+  onClick: (name: string, type: ElevatorButtonType) => void;
 }
 
-const Elevator: React.FC<ElevatorProps> = ({ name }) => {
+const Elevator: React.FC<ElevatorProps> = ({ name, onClick }) => {
   const [currentY, setCurrentY] = useState<number>(0);
   const handleClick = useCallback(
     (type: ElevatorButtonType) => {
@@ -83,7 +84,7 @@ const Elevator: React.FC<ElevatorProps> = ({ name }) => {
       setCurrentY(
         Math.max(Math.min(currentY + (type === "UP" ? 1 : -1), 8), 0)
       );
-      // 처리부
+      onClick(name, type);
     },
     [currentY]
   );
