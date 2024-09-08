@@ -1,7 +1,7 @@
 import styled from "@emotion/styled";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { io } from "socket.io-client";
-import Elevator from "./Elevator";
+import Elevator, { ElevatorStatus } from "./Elevator";
 import { ElevatorButtonType } from "./ElevatorButton";
 
 export const socket = io("ws://localhost:5000", {
@@ -33,41 +33,92 @@ const ElevatorGroup = styled.div({
   columnGap: 40,
 });
 
+const camelize = (str: string) =>
+  str.toLowerCase().replace(/_([a-z])/g, function (g) {
+    return g[1].toUpperCase();
+  });
+
+const defaultElevatorStatus: { [id: string]: ElevatorStatus } = [1, 1].reduce(
+  (acc, floor, idx) => ({
+    ...acc,
+    [`ELEVATOR${idx}`]: {
+      floor,
+      id: `ELEVATOR${idx + 1}`,
+      step: 0,
+      momentum: 0,
+      watchList: "",
+      status: "STOP",
+    },
+  }),
+  {}
+);
+
 const ElevatorController: React.FC = () => {
-  const [isConnected, setIsConnected] = useState(socket.connected);
-  const [events, setEvents] = useState<unknown[]>([]);
+  const [websocket, setWebsocket] = useState(
+    new WebSocket("ws://127.0.0.1:5678/")
+  );
+  const [elevators, setElevators] = useState<{ [id: string]: ElevatorStatus }>(
+    defaultElevatorStatus
+  );
+
+  const eventHandler = useCallback(
+    (event: string, id: string, value: string) => {
+      if (["FLOOR", "STEP"].includes(event)) {
+        const numberValue = parseInt(value);
+        setElevators((elevators) => ({
+          ...elevators,
+          [id]: {
+            ...elevators[id],
+            [camelize(event)]: numberValue,
+          },
+        }));
+        return;
+      }
+
+      setElevators((elevators) => ({
+        ...elevators,
+        [id]: {
+          ...elevators[id],
+          [camelize(event)]: value,
+        },
+      }));
+
+      console.log("EVENT", camelize(event));
+    },
+    []
+  );
+
+  const handleOnClick = useCallback(
+    (name: string, type: ElevatorButtonType, floor: number) => {
+      console.log("websocket", websocket);
+      try {
+        websocket?.send(`${name}:${type}:${floor}`);
+        console.log(websocket, name, type, floor);
+      } catch (e) {
+        console.error(e);
+      }
+    },
+    [websocket]
+  );
 
   useEffect(() => {
-    function onConnect() {
-      setIsConnected(true);
-    }
-
-    function onDisconnect() {
-      setIsConnected(false);
-    }
-
-    function onEvent(value: unknown[]) {
-      setEvents((previous) => [...previous, value]);
-    }
-
-    socket.on("connect", onConnect);
-    socket.on("disconnect", onDisconnect);
-    socket.on("foo", onEvent);
-
-    socket.connect();
-
-    return () => {
-      socket.disconnect();
-      socket.off("connect", onConnect);
-      socket.off("disconnect", onDisconnect);
-      socket.off("foo", onEvent);
+    websocket.onopen = () => {
+      console.log("WebSocket connection opened");
     };
-  }, []);
 
-  const handleOnClick = (name: string, type: ElevatorButtonType) => {
-    console.log(name, type);
-    socket.timeout(3000).emit("", { name, type });
-  };
+    websocket.onmessage = (event) => {
+      const [event_, id, value] = event.data.split(":");
+      eventHandler(event_, id, value);
+    };
+
+    websocket.onclose = () => {
+      console.log("WebSocket connection closed");
+    };
+
+    websocket.onerror = (error) => {
+      console.error("WebSocket error:", error);
+    };
+  }, [websocket]);
 
   return (
     <ElevatorControllerContainer>
@@ -77,8 +128,14 @@ const ElevatorController: React.FC = () => {
         ))}
       </ElevatorDisplayGroup>
       <ElevatorGroup>
-        <Elevator name="Elevator1" onClick={handleOnClick} />
-        <Elevator name="Elevator2" onClick={handleOnClick} />
+        {Object.entries(elevators).map(([key, value]) => (
+          <Elevator
+            key={key}
+            name={value.id}
+            status={value}
+            onClick={handleOnClick}
+          />
+        ))}
       </ElevatorGroup>
     </ElevatorControllerContainer>
   );

@@ -1,5 +1,5 @@
 import styled from "@emotion/styled";
-import React, { useCallback, useState } from "react";
+import React, { useCallback } from "react";
 import { ElevatorButtonType } from "./ElevatorButton";
 import ElevatorButtonGroup from "./ElevatorButtonGroup";
 
@@ -71,36 +71,85 @@ const ElevatorCursorDisplay = styled.div({
   fontWeight: 600,
 });
 
-interface ElevatorProps {
-  name: string;
-  onClick: (name: string, type: ElevatorButtonType) => void;
+const ElevatorDebugDisplay = styled.div({
+  padding: 20,
+  borderRadius: 10,
+  backgroundColor: "#efefef",
+  lineHeight: 1.6,
+});
+
+const ElevatorDebugDisplayList = styled.ul({
+  listStyle: "none",
+});
+
+const ElevatorDebugDisplayItem = styled.li({
+  display: "flex",
+  flexDirection: "row",
+  columnGap: 20,
+});
+
+const ElevatorDebugDisplayTitle = styled.b({
+  display: "inline-block",
+  minWidth: 240,
+  fontWeight: 600,
+});
+
+const ElevatorDebugDisplayText = styled.span({
+  display: "inline-block",
+});
+
+export enum ElevatorStatusValue {
+  "DOWN",
+  "UP",
+  "STOP",
 }
 
-const Elevator: React.FC<ElevatorProps> = ({ name, onClick }) => {
-  const [currentY, setCurrentY] = useState<number>(0);
-  const handleClick = useCallback(
-    (type: ElevatorButtonType) => {
-      console.log(type);
-      setCurrentY(
-        Math.max(Math.min(currentY + (type === "UP" ? 1 : -1), 8), 0)
-      );
-      onClick(name, type);
-    },
-    [currentY]
-  );
+export interface ElevatorStatus {
+  id: string;
+  step: number;
+  floor: number;
+  momentum: number;
+  watchList: string;
+  status: ElevatorStatusValue;
+}
+
+interface ElevatorProps {
+  name: string;
+  status: ElevatorStatus;
+  onClick: (name: string, type: ElevatorButtonType, floor: number) => void;
+}
+
+const Elevator: React.FC<ElevatorProps> = ({ name, status, onClick }) => {
+  const handleClick = useCallback((type: ElevatorButtonType, floor: number) => {
+    onClick(name, type, floor);
+  }, []);
+
   return (
     <ElevatorContainer>
       <ElevatorAxisGroup>
         {Array.from(Array(9).keys()).map((n) => (
           <ElevatorAxis key={n} />
         ))}
-        <ElevatorCursorGroup y={currentY}>
+        <ElevatorCursorGroup y={status.floor - 1}>
           <ElevatorCursor></ElevatorCursor>
-          <ElevatorCursorDisplay>STOP</ElevatorCursorDisplay>
+          <ElevatorCursorDisplay>
+            {ElevatorStatusValue[status.status]}
+          </ElevatorCursorDisplay>
         </ElevatorCursorGroup>
       </ElevatorAxisGroup>
       <ElevatorTitle>{name}</ElevatorTitle>
       <ElevatorButtonGroup onClick={handleClick} />
+      <ElevatorDebugDisplay>
+        <ElevatorDebugDisplayList>
+          {Object.entries(status).map(([key, value]) => (
+            <ElevatorDebugDisplayItem>
+              <ElevatorDebugDisplayTitle>{key}</ElevatorDebugDisplayTitle>
+              <ElevatorDebugDisplayText>{value}</ElevatorDebugDisplayText>
+            </ElevatorDebugDisplayItem>
+          ))}
+          <ElevatorDebugDisplayItem></ElevatorDebugDisplayItem>
+        </ElevatorDebugDisplayList>
+      </ElevatorDebugDisplay>
     </ElevatorContainer>
   );
 };
