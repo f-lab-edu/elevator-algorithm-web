@@ -21,7 +21,7 @@ const HeaderInner = styled.div({
 
 const Header: React.FC = () => (
   <HeaderContainer>
-    <HeaderInner>Elevator Contorller</HeaderInner>
+    <HeaderInner>Elevator Controller</HeaderInner>
   </HeaderContainer>
 );
 
