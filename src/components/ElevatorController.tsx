@@ -1,14 +1,7 @@
 import styled from "@emotion/styled";
-import { useCallback, useEffect, useState } from "react";
-import { io } from "socket.io-client";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Elevator, { ElevatorStatus, ElevatorStatusValue } from "./Elevator";
 import { ElevatorButtonType } from "./ElevatorButton";
-
-export const socket = io("ws://localhost:5000", {
-  path: "/",
-  transports: ["websocket"],
-  autoConnect: false,
-});
 
 const ElevatorControllerContainer = styled.div({
   display: "flex",
@@ -41,7 +34,7 @@ const camelize = (str: string) =>
 const defaultElevatorStatus: { [id: string]: ElevatorStatus } = [1, 1].reduce(
   (acc, floor, idx) => ({
     ...acc,
-    [`ELEVATOR${idx}`]: {
+    [`ELEVATOR${idx + 1}`]: {
       floor,
       id: `ELEVATOR${idx + 1}`,
       step: 0,
@@ -54,9 +47,7 @@ const defaultElevatorStatus: { [id: string]: ElevatorStatus } = [1, 1].reduce(
 );
 
 const ElevatorController: React.FC = () => {
-  const [websocket, setWebsocket] = useState(
-    new WebSocket("ws://127.0.0.1:5678/")
-  );
+  const websocket = useRef<WebSocket | null>(null);
   const [elevators, setElevators] = useState<{ [id: string]: ElevatorStatus }>(
     defaultElevatorStatus
   );
@@ -72,6 +63,7 @@ const ElevatorController: React.FC = () => {
             [camelize(event)]: numberValue,
           },
         }));
+        console.log(elevators);
         return;
       }
 
@@ -92,33 +84,42 @@ const ElevatorController: React.FC = () => {
     (name: string, type: ElevatorButtonType, floor: number) => {
       console.log("websocket", websocket);
       try {
-        websocket?.send(`${name}:${type}:${floor}`);
+        websocket.current?.send(`${name}:${type}:${floor}`);
         console.log(websocket, name, type, floor);
       } catch (e) {
         console.error(e);
       }
     },
-    [websocket]
+    []
   );
 
   useEffect(() => {
-    websocket.onopen = () => {
+    console.log("websocket started");
+    websocket.current = new WebSocket("ws://127.0.0.1:5678/");
+
+    websocket.current.onopen = () => {
       console.log("WebSocket connection opened");
     };
 
-    websocket.onmessage = (event) => {
+    websocket.current.onmessage = (event) => {
       const [event_, id, value] = event.data.split(":");
       eventHandler(event_, id, value);
     };
 
-    websocket.onclose = () => {
+    websocket.current.onclose = () => {
       console.log("WebSocket connection closed");
     };
 
-    websocket.onerror = (error) => {
+    websocket.current.onerror = (error) => {
       console.error("WebSocket error:", error);
     };
-  }, [websocket]);
+
+    const webSocket = websocket.current;
+
+    return () => {
+      webSocket.close();
+    };
+  }, []);
 
   return (
     <ElevatorControllerContainer>
