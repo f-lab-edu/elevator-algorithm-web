@@ -27,7 +27,7 @@ const ElevatorFloor = styled.select({
 const ElevatorButtonGroup: React.FC<ElevatorButtonGroupProps> = ({
   onClick,
 }) => {
-  const [floor, setFloor] = useState(0);
+  const [floor, setFloor] = useState(1);
 
   const handleChange = useCallback(
     (event: React.ChangeEvent<HTMLSelectElement>) => {
