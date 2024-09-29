@@ -1,7 +1,7 @@
 import styled from "@emotion/styled";
 import { useCallback, useEffect, useState } from "react";
 import { io } from "socket.io-client";
-import Elevator, { ElevatorStatus } from "./Elevator";
+import Elevator, { ElevatorStatus, ElevatorStatusValue } from "./Elevator";
 import { ElevatorButtonType } from "./ElevatorButton";
 
 export const socket = io("ws://localhost:5000", {
@@ -47,7 +47,7 @@ const defaultElevatorStatus: { [id: string]: ElevatorStatus } = [1, 1].reduce(
       step: 0,
       momentum: 0,
       watchList: "",
-      status: "STOP",
+      status: ElevatorStatusValue.STOP,
     },
   }),
   {}
